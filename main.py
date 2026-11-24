@@ -49,13 +49,26 @@ def write_entry(text, out_dir):
     return path
 
 
+def resolve_out_dir(out_dir):
+    """Refuse an output directory inside the repo: entries must never
+    write into the repository directory. Returns a safe directory."""
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    candidate = os.path.abspath(out_dir)
+    if candidate == repo_dir or candidate.startswith(repo_dir + os.sep):
+        print("refusing output inside repo %s" % candidate, file=sys.stderr)
+        fallback = os.path.join(tempfile.gettempdir(), "makefun-output")
+        os.makedirs(fallback, exist_ok=True)
+        return fallback
+    return candidate
+
+
 def main():
     ok, why = validate(ROAST)
     if not ok:
         print("roast failed validation: %s" % why, file=sys.stderr)
         return 0
 
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
+    out_dir = resolve_out_dir(os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output")
     try:
         path = write_entry(ROAST, out_dir)
     except OSError as exc:
